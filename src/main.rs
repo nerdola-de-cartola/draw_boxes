@@ -5,8 +5,7 @@ use std::{
 };
 
 use nannou::{
-    image::{DynamicImage, GenericImageView, RgbImage},
-    prelude::*,
+    image::{DynamicImage, GenericImageView, RgbImage}, prelude::*
 };
 use video_rs::Decoder;
 
@@ -18,6 +17,8 @@ struct Model {
     frame_duration: Duration,
     since_last_frame: Duration,
 }
+
+const JPEG_QUALITY: u8 = 30;
 
 fn main() {
     nannou::app(model).update(update).run();
@@ -76,39 +77,56 @@ fn update(app: &App, model: &mut Model, update: Update) {
 }
 
 fn view(app: &App, model: &Model, frame: Frame) {
+    /*
     model
         .video_frame
         .save_with_format("./output.bmp", nannou::image::ImageFormat::Bmp)
         .unwrap();
+    */
 
+    
     let encode_time = Instant::now();
-    let mut buffer: Vec<u8> = Vec::new();
-    let encoder = jpeg_encoder::Encoder::new(&mut buffer, 10);
-    encoder.encode(
-        model.video_frame.as_bytes(),
-        model.video_frame.width().try_into().unwrap(),
-        model.video_frame.height().try_into().unwrap(),
-        ColorType::Rgb,
-    ).unwrap();
+    encode_frame(&model.video_frame);
     println!("Encode time: {:?}", encode_time.elapsed());
+
+    /*
     model
         .video_frame
         .save_with_format("./output.jpg", nannou::image::ImageFormat::Jpeg)
         .unwrap();
+    */
 
-    let video_texture = wgpu::Texture::from_image(app, &model.video_frame);
-
+    
     let render_time = Instant::now();
     let draw = app.draw();
-    draw.texture(&video_texture);
+    let texture = wgpu::Texture::from_image(app, &model.video_frame);
+    draw.texture(&texture);
 
-    draw.rect()
-        .x(0.0)
-        .y(0.0)
-        .color(rgba(0.0, 0.0, 0.0, 0.0))
-        .stroke_weight(2.0)
-        .stroke(BLACK);
+    let color= Rgba::new(0.0, 0.0, 0.0, 0.0);
+
+    draw_bounding_box(&draw, (0.0, 0.0));
 
     draw.to_frame(app, &frame).unwrap();
     println!("Render time: {:?}", render_time.elapsed());
+}
+
+fn draw_bounding_box(draw: &Draw, pos: (f32, f32)) {
+    draw.rect()
+        .x(pos.0)
+        .y(pos.1)
+        .color(rgba(0.0, 0.0, 0.0, 0.0))
+        .stroke_weight(2.0)
+        .stroke(BLACK);   
+}
+
+
+fn encode_frame(frame: &DynamicImage) {
+    let mut buffer: Vec<u8> = Vec::new();
+    let encoder = jpeg_encoder::Encoder::new(&mut buffer, JPEG_QUALITY);
+    encoder.encode(
+        frame.as_bytes(),
+        frame.width().try_into().unwrap(),
+        frame.height().try_into().unwrap(),
+        ColorType::Rgb,
+    ).unwrap();
 }
